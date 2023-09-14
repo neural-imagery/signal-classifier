@@ -30,7 +30,7 @@ INNER_K = 3
 # Standard machine learning parameters
 MAX_ITER = 250000  # for support vector classifier
 C_LIST = [1e-3, 1e-2, 1e-1, 1e0]
-N_NEIGHBORS_LIST = list(range(1, 100))
+N_NEIGHBORS_LIST = list(range(1, 10))
 
 def machine_learn(nirs, labels, groups, model, normalize=False,
                   random_state=None, output_folder='./outputs'):
@@ -76,6 +76,9 @@ def machine_learn(nirs, labels, groups, model, normalize=False,
 
     Returns
     -------
+    clf : Sklearn Classifier
+        Sklearn object for classifying data.
+
     accuracies : list of floats
         List of accuracies on the test sets (one for each iteration of the
         outer cross-validation).
@@ -92,6 +95,7 @@ def machine_learn(nirs, labels, groups, model, normalize=False,
         ``y_pred`` being the true and the predictions on the specific iteration
         of the outer cross-validation.
     """
+    
     print(f'Machine learning: {model}')
 
     if not os.path.isdir(output_folder):
@@ -109,8 +113,10 @@ def machine_learn(nirs, labels, groups, model, normalize=False,
     accuracies = []
     additional_metrics = []
     all_hps = []
+    classifiers = []
     out_split = out_kf.split(nirs, labels, groups)
     for k, out_idx in enumerate(out_split):
+        print("out_idx", out_idx)
         print(f'\tFOLD #{k+1}')
         nirs_train, nirs_test = nirs[out_idx[0]], nirs[out_idx[1]]
         labels_train, labels_test = labels[out_idx[0]], labels[out_idx[1]]
@@ -138,9 +144,9 @@ def machine_learn(nirs, labels, groups, model, normalize=False,
 
         # LDA
         if model == 'lda':
-            lda = LinearDiscriminantAnalysis()
-            lda.fit(nirs_train, labels_train)
-            y_pred = lda.predict(nirs_test).tolist()
+            clf = LinearDiscriminantAnalysis()
+            clf.fit(nirs_train, labels_train)
+            y_pred = clf.predict(nirs_test).tolist()
             all_hps.append(None)
 
         # SVC
@@ -171,7 +177,10 @@ def machine_learn(nirs, labels, groups, model, normalize=False,
             all_hps.append(None)
 
         # Metrics
-        accuracies.append(accuracy_score(labels_test, y_pred))
+        classifiers.append(clf)
+        acc = accuracy_score(labels_test, y_pred)
+        print("acc", acc, "test labels", labels_test, "predictions", y_pred)
+        accuracies.append(acc)
         prfs = precision_recall_fscore_support(labels_test, y_pred,
                                                average='micro')
         additional_metrics.append(prfs[:-1])
@@ -185,4 +194,4 @@ def machine_learn(nirs, labels, groups, model, normalize=False,
     plt.savefig(f'{output_folder}/confusion_matrix.png')
     plt.close()
 
-    return accuracies, all_hps, additional_metrics
+    return classifiers, accuracies, all_hps, additional_metrics
