@@ -32,7 +32,7 @@ MAX_ITER = 250000  # for support vector classifier
 C_LIST = [1e-3, 1e-2, 1e-1, 1e0]
 N_NEIGHBORS_LIST = list(range(1, 100))
 
-def machine_learn(nirs, labels, groups, model, features, normalize=False,
+def machine_learn(nirs, labels, groups, model, normalize=False,
                   random_state=None, output_folder='./outputs'):
     """
     Perform nested k-fold cross-validation for standard machine learning models
@@ -44,7 +44,7 @@ def machine_learn(nirs, labels, groups, model, features, normalize=False,
 
     Parameters
     ----------
-    nirs : array of shape (n_epochs, n_channels, n_times)
+    nirs : array of shape (n_epochs, n_features)
         Processed NIRS data.
 
     labels : array of integers
@@ -59,12 +59,6 @@ def machine_learn(nirs, labels, groups, model, features, normalize=False,
         Standard machine learning to use. Either ``'lda'`` for a linear
         discriminant analysis, ``'svc'`` for a linear support vector
         classifier or ``'knn'`` for a k-nearest neighbors classifier.
-
-    features : list of strings
-        List of features to extract. The list can include ``'mean'`` for the
-        mean along the time axis, ``'std'`` for standard deviation along the
-        time axis and ``'slope'`` for the slope of the linear regression along
-        the time axis.
 
     normalize : boolean
         Whether to normalize data before feeding to the model with min-max
@@ -102,9 +96,6 @@ def machine_learn(nirs, labels, groups, model, features, normalize=False,
 
     if not os.path.isdir(output_folder):
         os.makedirs(output_folder)
-
-    # Feature extraction
-    nirs = featurize.summary_features(nirs, features, "channels")
 
     # K-fold cross-validator
     if groups is None:
@@ -195,4 +186,3 @@ def machine_learn(nirs, labels, groups, model, features, normalize=False,
     plt.close()
 
     return accuracies, all_hps, additional_metrics
-

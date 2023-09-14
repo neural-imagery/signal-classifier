@@ -35,20 +35,21 @@ def summary_features(nirs, feature_list, summary_type):
     nirs_features = []
     for feature in feature_list:
         if feature == 'mean':
-            feature = np.mean(nirs, axis=axis)
+            feature_ = np.mean(nirs, axis=axis)
         elif feature == 'std':
-            feature = np.std(nirs, axis=axis)
+            feature_ = np.std(nirs, axis=axis)
         elif feature == 'slope':
             x = range(nirs.shape[2])
-            feature = []
+            feature_ = []
             for epoch in nirs:
                 ep_slopes = []
                 for channel in epoch:
                     ep_slopes.append(linregress(x, channel).slope)
-                feature.append(ep_slopes)
-        nirs_features.append(feature)
-
+                feature_.append(ep_slopes)
+        nirs_features.append(feature_)
+    
     nirs_features = np.stack(nirs_features, axis=2)
     nirs_features = nirs_features.reshape(len(nirs), -1)  # flatten data
+    print(nirs_features.shape, "Shape")
 
     return nirs_features
