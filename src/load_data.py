@@ -43,9 +43,11 @@ def load_retinotopy_data():
     # load all .snirf files in data/Study1/Steve.
     data = []
 
-    for file in os.listdir("data/Retinotopy/Steve"):
+    folder = "data/Retinotopy/Steve"
+
+    for file in os.listdir(folder):
         if file.endswith(".snirf"):
-            snirf_file = os.path.join("data/Study1/Steve", file)
+            snirf_file = os.path.join(folder, file)
             annots_file = snirf_file.replace(".snirf", "_events.tsv")
 
             nirs = mne.io.read_raw_snirf(snirf_file)
