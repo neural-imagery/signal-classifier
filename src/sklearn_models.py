@@ -24,16 +24,14 @@ from sklearn.utils import shuffle
 
 from src import featurize
 
-OUTER_K = 5
-INNER_K = 3
-
 # Standard machine learning parameters
 MAX_ITER = 250000  # for support vector classifier
 C_LIST = [1e-3, 1e-2, 1e-1, 1e0]
 N_NEIGHBORS_LIST = list(range(1, 10))
 
 def machine_learn(nirs, labels, groups, model, normalize=False,
-                  random_state=None, output_folder='./outputs'):
+                  random_state=None, output_folder='./outputs',
+                  n_inner_splits=1, n_outer_splits=2):
     """
     Perform nested k-fold cross-validation for standard machine learning models
     producing metrics and confusion matrices. The models include linear
@@ -103,21 +101,25 @@ def machine_learn(nirs, labels, groups, model, normalize=False,
 
     # K-fold cross-validator
     if groups is None:
-        out_kf = StratifiedKFold(n_splits=OUTER_K, shuffle=True, random_state=random_state)
-        in_kf = StratifiedKFold(n_splits=INNER_K, shuffle=True, random_state=random_state)
+        out_kf = StratifiedKFold(n_splits=n_outer_splits, shuffle=True, random_state=random_state)
+        if n_inner_splits > 1:
+            in_kf = StratifiedKFold(n_splits=n_inner_splits, shuffle=True, random_state=random_state)
+        else:
+            in_kf = lambda a,b,c: None
     else:
-        out_kf = GroupKFold(n_splits=OUTER_K)
-        in_kf = GroupKFold(n_splits=INNER_K)
+        out_kf = GroupKFold(n_splits=n_outer_Splits)
+        in_kf = GroupKFold(n_splits=n_inner_splits)
     all_y_true = []
     all_y_pred = []
-    accuracies = []
+    test_accuracies = []
+    train_accuracies = []
     additional_metrics = []
     all_hps = []
     classifiers = []
     out_split = out_kf.split(nirs, labels, groups)
     for k, out_idx in enumerate(out_split):
+        print(f'\n\tFOLD #{k+1}')
         print("out_idx", out_idx)
-        print(f'\tFOLD #{k+1}')
         nirs_train, nirs_test = nirs[out_idx[0]], nirs[out_idx[1]]
         labels_train, labels_test = labels[out_idx[0]], labels[out_idx[1]]
 
@@ -140,7 +142,10 @@ def machine_learn(nirs, labels, groups, model, normalize=False,
             nirs_train = (nirs_train - mins) / (maxs - mins)
             nirs_test = (nirs_test - mins) / (maxs - mins)
 
-        in_split = in_kf.split(nirs_train, labels_train, groups_train)
+        if n_inner_splits > 1:
+            in_split = in_kf.split(nirs_train, labels_train, groups_train)
+        else:
+            in_split = None
 
         # LDA
         if model == 'lda':
@@ -152,9 +157,10 @@ def machine_learn(nirs, labels, groups, model, normalize=False,
         # SVC
         elif model == 'svc':
             parameters = {'C': C_LIST}
-            svc = LinearSVC(max_iter=MAX_ITER)
-            clf = GridSearchCV(svc, parameters, scoring='accuracy',
-                               cv=in_split)
+            clf = LinearSVC(max_iter=MAX_ITER)
+            if n_inner_splits > 1:
+                clf = GridSearchCV(svc, parameters, scoring='accuracy',
+                                   cv=in_split)
             clf.fit(nirs_train, labels_train)
             y_pred = clf.predict(nirs_test).tolist()
             all_hps.append(clf.best_params_['C'])
@@ -162,25 +168,30 @@ def machine_learn(nirs, labels, groups, model, normalize=False,
         # kNN
         elif model == 'knn':
             parameters = {'n_neighbors': N_NEIGHBORS_LIST}
-            knn = KNeighborsClassifier()
-            clf = GridSearchCV(knn, parameters, scoring='accuracy',
-                               cv=in_split)
+            clf = KNeighborsClassifier()
+            if n_inner_splits > 1:
+                clf = GridSearchCV(knn, parameters, scoring='accuracy',
+                                   cv=in_split)
             clf.fit(nirs_train, labels_train)
             y_pred = clf.predict(nirs_test).tolist()
             all_hps.append(clf.best_params_['n_neighbors'])
 
         # ann
         elif model == "ann":
-            clf = MLPClassifier(solver='adam', hidden_layer_sizes=(32,64,1200,64,32))
+            clf = MLPClassifier(solver='sgd', learning_rate_init=.0001, hidden_layer_sizes=(32,64,128), max_iter=10000)
             clf.fit(nirs_train, labels_train)
             y_pred = clf.predict(nirs_test).tolist()
+            train_pred = clf.predict(nirs_train.tolist())
             all_hps.append(None)
 
         # Metrics
         classifiers.append(clf)
-        acc = accuracy_score(labels_test, y_pred)
-        print("acc", acc, "test labels", labels_test, "predictions", y_pred)
-        accuracies.append(acc)
+        test_acc = accuracy_score(labels_test, y_pred)
+        train_acc = accuracy_score(labels_train, train_pred)
+        print("test acc:", test_acc, "test labels:", labels_test, "test predictions:", y_pred)
+        print("train acc:", train_acc, "train labels:", labels_train, "train predictions:", train_pred)
+        test_accuracies.append(test_acc)
+        train_accuracies.append(train_acc)
         prfs = precision_recall_fscore_support(labels_test, y_pred,
                                                average='micro')
         additional_metrics.append(prfs[:-1])
@@ -194,4 +205,4 @@ def machine_learn(nirs, labels, groups, model, normalize=False,
     plt.savefig(f'{output_folder}/confusion_matrix.png')
     plt.close()
 
-    return classifiers, accuracies, all_hps, additional_metrics
+    return classifiers, test_accuracies, train_accuracies, all_hps, additional_metrics
