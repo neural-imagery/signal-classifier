@@ -1,0 +1,1 @@
+Steve’s retinotopy data. He alternates looking at left checkerboard, right checkerboard, and gray screen. GitHub repo for stimulus presentation: https://github.com/neural-imagery/data-experiments

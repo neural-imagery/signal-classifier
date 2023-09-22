@@ -43,7 +43,7 @@ def load_retinotopy_data():
     # load all .snirf files in data/Study1/Steve.
     data = []
 
-    for file in os.listdir("data/Study1/Steve"):
+    for file in os.listdir("data/Retinotopy/Steve"):
         if file.endswith(".snirf"):
             snirf_file = os.path.join("data/Study1/Steve", file)
             annots_file = snirf_file.replace(".snirf", "_events.tsv")
