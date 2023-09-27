@@ -50,7 +50,7 @@ def load_retinotopy_data():
             snirf_file = os.path.join(folder, file)
             annots_file = snirf_file.replace(".snirf", "_events.tsv")
 
-            nirs = mne.io.read_raw_snirf(snirf_file, preload=True)
+            nirs = mne.io.read_raw_snirf(snirf_file, preload=True, verbose=False)
             annots = _get_annotations(annots_file)
             nirs.set_annotations(annots)
 
